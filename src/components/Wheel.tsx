@@ -107,7 +107,7 @@ export const Wheel: React.FC<WheelProps> = ({
       {/* Wheel Container */}
       <div
         className={cn(
-          "w-full h-full rounded-full overflow-hidden relative border-8",
+          "w-full h-full rounded-full overflow-hidden relative border-8 isolate",
           wheelStyle === 'classic' && "border-white shadow-[0_0_50px_rgba(0,0,0,0.1)]",
           wheelStyle === 'neon' && "border-slate-900 shadow-[0_0_30px_rgba(34,211,238,0.3)] bg-slate-950",
           wheelStyle === 'minimal' && "border-slate-200 shadow-none bg-white",
@@ -123,11 +123,12 @@ export const Wheel: React.FC<WheelProps> = ({
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.8, ease: "easeOut" }}
-              className="absolute inset-0 z-10"
+              className="absolute inset-0 z-10 rounded-full"
               style={{
                 backgroundImage: `url("${bgImage}")`,
                 backgroundSize: 'cover',
-                backgroundPosition: 'center'
+                backgroundPosition: 'center',
+                willChange: 'opacity'
               }}
             />
           )}
