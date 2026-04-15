@@ -10,7 +10,17 @@ import confetti from 'canvas-confetti';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
 
-const INITIAL_OPTIONS = ['披萨', '汉堡', '寿司', '火锅', '沙拉', '拉面'];
+const INITIAL_OPTIONS = ["AV", "エロ漫画", "エロアニメ", "エロゲーム", "同人ボイス"];
+const INITIAL_OPTION_IMAGES = [
+  "https://pics.dmm.co.jp/mono/movie/adult/mmus108/mmus108pl.jpg",
+  "https://img5.qy0.ru/data/3545/14/001.jpg",
+  "https://melonbooks.akamaized.net/user_data/packages/resize_image.php?image=216001085044.jpg",
+  "https://t.vndb.org/cv/31/83931.jpg",
+  "https://img.dlsite.jp/modpub/images2/work/doujin/RJ01593000/RJ01592719_img_main.webp"
+];
+const INITIAL_STYLE: WheelStyle = 'custom';
+const INITIAL_FONT_COLOR = '#F7DC6F';
+const INITIAL_SHOW_IMAGES = true;
 
 interface HistoryItem {
   id: string;
@@ -58,11 +68,12 @@ export default function App() {
     }
   });
   const [wheelStyle, setWheelStyle] = useState<WheelStyle>(() => {
-    return (localStorage.getItem('wheel_style') as WheelStyle) || 'classic';
+    return (localStorage.getItem('wheel_style') as WheelStyle) || INITIAL_STYLE;
   });
   const [bgImage, setBgImage] = useState<string | null>(() => {
     return localStorage.getItem('wheel_bg_image');
   });
+  const [winningIndex, setWinningIndex] = useState<number | null>(null);
   const [optionImages, setOptionImages] = useState<(string | null)[]>(() => {
     try {
       const saved = localStorage.getItem('wheel_option_images');
@@ -73,16 +84,19 @@ export default function App() {
       const savedOptions = localStorage.getItem('wheel_options');
       const parsedOptions = savedOptions ? JSON.parse(savedOptions) : null;
       const len = Array.isArray(parsedOptions) ? parsedOptions.length : INITIAL_OPTIONS.length;
+      
+      if (!savedOptions) return INITIAL_OPTION_IMAGES;
       return Array(len).fill(null);
     } catch {
-      return Array(INITIAL_OPTIONS.length).fill(null);
+      return INITIAL_OPTION_IMAGES;
     }
   });
   const [fontColor, setFontColor] = useState<string>(() => {
-    return localStorage.getItem('wheel_font_color') || '#ffffff';
+    return localStorage.getItem('wheel_font_color') || INITIAL_FONT_COLOR;
   });
   const [showOptionImages, setShowOptionImages] = useState<boolean>(() => {
-    return localStorage.getItem('wheel_show_option_images') !== 'false';
+    const saved = localStorage.getItem('wheel_show_option_images');
+    return saved !== null ? saved !== 'false' : INITIAL_SHOW_IMAGES;
   });
 
   const [newOption, setNewOption] = useState('');
@@ -153,6 +167,7 @@ export default function App() {
 
   const handleSpinEnd = useCallback((result: string, index: number) => {
     setWinner(result);
+    setWinningIndex(index);
     
     // Set background image to the winning slice's image if it exists
     if (Array.isArray(optionImages) && optionImages[index]) {
@@ -194,10 +209,10 @@ export default function App() {
 
   const loadConfig = (config: any) => {
     setOptions(config.options || INITIAL_OPTIONS);
-    setWheelStyle(config.wheelStyle || 'classic');
+    setWheelStyle(config.wheelStyle || INITIAL_STYLE);
     setBgImage(null);
     setOptionImages(config.optionImages || Array((config.options || INITIAL_OPTIONS).length).fill(null));
-    setFontColor(config.fontColor || '#ffffff');
+    setFontColor(config.fontColor || INITIAL_FONT_COLOR);
     setActivePanel('options');
     setWinner(null);
   };
@@ -289,6 +304,7 @@ export default function App() {
 
   const resetWheel = () => {
     setWinner(null);
+    setWinningIndex(null);
     setBgImage(null);
   };
 
@@ -491,6 +507,7 @@ export default function App() {
               options={options} 
               onSpinStart={() => {
                 setWinner(null);
+                setWinningIndex(null);
                 setBgImage(null);
               }}
               onSpinEnd={handleSpinEnd} 
@@ -498,6 +515,7 @@ export default function App() {
               setIsSpinning={setIsSpinning}
               wheelStyle={showOptionImages ? wheelStyle : 'luxury'}
               bgImage={bgImage}
+              winningIndex={winningIndex}
               optionImages={showOptionImages ? optionImages : []}
               fontColor={fontColor}
             />

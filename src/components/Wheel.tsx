@@ -12,6 +12,7 @@ interface WheelProps {
   setIsSpinning: (spinning: boolean) => void;
   wheelStyle?: WheelStyle;
   bgImage?: string | null;
+  winningIndex?: number | null;
   optionImages?: (string | null)[];
   fontColor?: string;
 }
@@ -32,6 +33,7 @@ export const Wheel: React.FC<WheelProps> = ({
   setIsSpinning,
   wheelStyle = 'classic',
   bgImage,
+  winningIndex,
   optionImages = [],
   fontColor = '#ffffff'
 }) => {
@@ -39,6 +41,19 @@ export const Wheel: React.FC<WheelProps> = ({
   const rotationRef = React.useRef(0);
 
   const colors = STYLE_COLORS[wheelStyle];
+
+  const getSectorPath = (startAngle: number, endAngle: number, radius: number = 50) => {
+    const points = [];
+    points.push("50,50");
+    const steps = 30;
+    for (let i = 0; i <= steps; i++) {
+      const a = startAngle + (endAngle - startAngle) * (i / steps);
+      const x = 50 + radius * Math.cos((Math.PI * (a - 90)) / 180);
+      const y = 50 + radius * Math.sin((Math.PI * (a - 90)) / 180);
+      points.push(`${x},${y}`);
+    }
+    return `M ${points.join(" L ")} Z`;
+  };
 
   const slices = useMemo(() => {
     const angle = 360 / options.length;
@@ -58,7 +73,9 @@ export const Wheel: React.FC<WheelProps> = ({
         pathData,
         color: colors[i % colors.length],
         label: option,
-        midAngle: startAngle + angle / 2
+        midAngle: startAngle + angle / 2,
+        startAngle,
+        endAngle
       };
     });
   }, [options, wheelStyle, colors]);
@@ -115,22 +132,41 @@ export const Wheel: React.FC<WheelProps> = ({
           wheelStyle === 'custom' && "border-white shadow-[0_0_40px_rgba(0,0,0,0.1)] bg-slate-100"
         )}
       >
-        {/* Background Image Layer (Fade In) */}
+        {/* Background Image Layer (Expansion) */}
         <AnimatePresence>
-          {bgImage && (
+          {bgImage && winningIndex !== null && slices[winningIndex] && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 0.8, ease: "easeOut" }}
-              className="absolute inset-0 z-10 rounded-full"
-              style={{
-                backgroundImage: `url("${bgImage}")`,
-                backgroundSize: 'cover',
-                backgroundPosition: 'center',
-                willChange: 'opacity'
-              }}
-            />
+              transition={{ duration: 0.5 }}
+              className="absolute inset-0 z-10 rounded-full overflow-hidden"
+            >
+              <svg 
+                viewBox="0 0 100 100" 
+                className="w-full h-full"
+                style={{ transform: `rotate(${rotationRef.current}deg)`, transformOrigin: 'center' }}
+              >
+                <defs>
+                  <mask id="winner-mask">
+                    <motion.path
+                      initial={{ d: getSectorPath(slices[winningIndex].startAngle, slices[winningIndex].endAngle) }}
+                      animate={{ d: getSectorPath(slices[winningIndex].startAngle, slices[winningIndex].startAngle + 360) }}
+                      transition={{ duration: 1.2, ease: [0.4, 0, 0.2, 1] }}
+                      fill="white"
+                    />
+                  </mask>
+                </defs>
+                <g mask="url(#winner-mask)">
+                  <image
+                    href={bgImage}
+                    x="0" y="0" width="100" height="100"
+                    preserveAspectRatio="xMidYMid slice"
+                    transform={`rotate(${slices[winningIndex].midAngle} 50 50)`}
+                  />
+                </g>
+              </svg>
+            </motion.div>
           )}
         </AnimatePresence>
 
@@ -141,38 +177,35 @@ export const Wheel: React.FC<WheelProps> = ({
         >
           <svg viewBox="0 0 100 100" className="w-full h-full">
           <defs>
-            {wheelStyle === 'custom' && options.map((_, i) => (
-              optionImages[i] && (
-                <pattern 
-                  key={`pattern-${i}`} 
-                  id={`slice-pattern-${i}`} 
-                  patternUnits="userSpaceOnUse" 
-                  width="100" 
-                  height="100"
-                >
-                  <image 
-                    href={optionImages[i]!} 
-                    x="0" 
-                    y="0" 
-                    width="100" 
-                    height="100" 
-                    preserveAspectRatio="xMidYMid slice" 
-                  />
-                </pattern>
-              )
+            {options.map((_, i) => (
+              <clipPath key={`clip-${i}`} id={`slice-clip-${i}`}>
+                <path d={slices[i].pathData} />
+              </clipPath>
             ))}
           </defs>
           {slices.map((slice, i) => (
             <g key={i}>
-              <path
-                d={slice.pathData}
-                fill={bgImage ? 'transparent' : ((wheelStyle === 'custom' && optionImages[i]) ? `url(#slice-pattern-${i})` : slice.color)}
-                stroke={bgImage ? 'rgba(255,255,255,0.2)' : (wheelStyle === 'neon' ? '#0f172a' : (wheelStyle === 'custom' ? 'rgba(255,255,255,0.3)' : 'white'))}
-                strokeWidth={wheelStyle === 'minimal' ? '0.2' : '0.5'}
-                className={cn(
-                  wheelStyle === 'neon' && "opacity-80"
-                )}
-              />
+              {wheelStyle === 'custom' && optionImages[i] ? (
+                <g clipPath={`url(#slice-clip-${i})`}>
+                  <image
+                    href={optionImages[i]!}
+                    x="0" y="0" width="100" height="100"
+                    preserveAspectRatio="xMidYMid slice"
+                    transform={`rotate(${slice.midAngle} 50 50)`}
+                    className={bgImage ? "opacity-0" : "opacity-100"}
+                  />
+                </g>
+              ) : (
+                <path
+                  d={slice.pathData}
+                  fill={bgImage ? 'transparent' : slice.color}
+                  stroke={bgImage ? 'rgba(255,255,255,0.2)' : (wheelStyle === 'neon' ? '#0f172a' : (wheelStyle === 'custom' ? 'rgba(255,255,255,0.3)' : 'white'))}
+                  strokeWidth={wheelStyle === 'minimal' ? '0.2' : '0.5'}
+                  className={cn(
+                    wheelStyle === 'neon' && "opacity-80"
+                  )}
+                />
+              )}
               {!bgImage && (
                 <g transform={`rotate(${slice.midAngle} 50 50)`}>
                   <text
